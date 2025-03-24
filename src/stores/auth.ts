@@ -50,11 +50,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (error) throw error;
       set({ user: data.user });
       
-      const { data: roleData } = await supabase
+      // Get user role, defaulting to 'user' if not found
+      const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', data.user.id)
-        .single();
+        .maybeSingle(); // Use maybeSingle instead of single to handle no results
+      
+      if (roleError) {
+        console.error('Error fetching user role:', roleError);
+      }
       
       set({ role: roleData?.role || 'user' });
     } catch (error) {
@@ -87,11 +92,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return;
       }
 
-      const { data: roleData } = await supabase
+      // Get user role, defaulting to 'user' if not found
+      const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle(); // Use maybeSingle instead of single to handle no results
+
+      if (roleError) {
+        console.error('Error checking role:', roleError);
+      }
 
       set({ role: roleData?.role || 'user' });
     } catch (error) {
