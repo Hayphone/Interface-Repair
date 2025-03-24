@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ClipboardList, PenTool as Tool, Package, Users, Loader, ArrowRight, Plus, Smartphone } from 'lucide-react';
 import { useDashboardStore } from '../stores/dashboard';
 import { supabase } from '../lib/supabase';
+import { PriceCalculator } from '../components/PriceCalculator';
 
 const Dashboard = () => {
   const { metrics, recentRepairs, loading, error, fetchDashboardData } = useDashboardStore();
@@ -122,44 +123,48 @@ const Dashboard = () => {
         ))}
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Réparations récentes</h2>
-          <Link
-            to="/repairs"
-            className="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-500"
-          >
-            Voir tout
-            <ArrowRight className="h-4 w-4 ml-1" />
-          </Link>
-        </div>
-        <div className="divide-y divide-gray-200">
-          {recentRepairs.length === 0 ? (
-            <p className="p-6 text-center text-gray-500">
-              Aucune réparation récente
-            </p>
-          ) : (
-            recentRepairs.map((repair) => (
-              <div key={repair.id} className="p-6 hover:bg-gray-50">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-900">
-                      {repair.devices?.brand} {repair.devices?.model}
-                    </h3>
-                    <p className="mt-1 text-sm text-gray-500">
-                      {repair.description}
-                    </p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-900">Réparations récentes</h2>
+            <Link
+              to="/repairs"
+              className="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-500"
+            >
+              Voir tout
+              <ArrowRight className="h-4 w-4 ml-1" />
+            </Link>
+          </div>
+          <div className="divide-y divide-gray-200">
+            {recentRepairs.length === 0 ? (
+              <p className="p-6 text-center text-gray-500">
+                Aucune réparation récente
+              </p>
+            ) : (
+              recentRepairs.map((repair) => (
+                <div key={repair.id} className="p-6 hover:bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-900">
+                        {repair.devices?.brand} {repair.devices?.model}
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        {repair.description}
+                      </p>
+                    </div>
+                    <StatusBadge status={repair.status} />
                   </div>
-                  <StatusBadge status={repair.status} />
+                  <div className="mt-2 text-sm text-gray-500">
+                    <p>Client: {repair.customers?.[0]?.name}</p>
+                    <p>Date: {new Date(repair.created_at).toLocaleDateString('fr-FR')}</p>
+                  </div>
                 </div>
-                <div className="mt-2 text-sm text-gray-500">
-                  <p>Client: {repair.customers?.[0]?.name}</p>
-                  <p>Date: {new Date(repair.created_at).toLocaleDateString('fr-FR')}</p>
-                </div>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
         </div>
+
+        <PriceCalculator />
       </div>
     </div>
   );
