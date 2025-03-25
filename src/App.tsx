@@ -9,7 +9,7 @@ import RepairForm from './pages/RepairForm';
 import RepairDetail from './pages/RepairDetail';
 import ArchivedRepairs from './pages/ArchivedRepairs';
 import InventoryList from './pages/InventoryList';
-import ImeiCheckList from './pages/ImeiCheckList';
+import DiagnosticsList from './pages/DiagnosticsList';
 import PublicRepairView from './pages/PublicRepairView';
 import Login from './pages/Login';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -45,7 +45,7 @@ function App() {
                       <Route path="/repairs/new" element={<RepairForm />} />
                       <Route path="/repairs/:id" element={<RepairDetail />} />
                       <Route path="/inventory" element={<InventoryList />} />
-                      <Route path="/imei-check" element={<ImeiCheckList />} />
+                      <Route path="/diagnostics" element={<DiagnosticsList />} />
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                   </div>

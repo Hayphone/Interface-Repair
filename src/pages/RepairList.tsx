@@ -1,16 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { PlusCircle, Loader, PenTool as Tool, Trash2, CheckCircle } from 'lucide-react';
+import { PlusCircle, Loader, PenTool as Tool, Trash2, CheckCircle, Stethoscope } from 'lucide-react';
 import { useRepairStore, REPAIR_STATUS, REPAIR_STATUS_LABELS, REPAIR_STATUS_COLORS } from '../stores/repairs';
 import { ImportExportButtons } from '../components/ImportExportButtons';
 import { StatusSelector } from '../components/StatusSelector';
+import { DiagnosticReportButton } from '../components/DiagnosticReport';
+import { DiagnosticModal } from '../components/DiagnosticModal';
+import type { DiagnosticData } from '../components/DiagnosticForm';
 
 const RepairList = () => {
-  const { repairs, loading, error, fetchRepairs, deleteRepair, addRepair, updateRepairStatus } = useRepairStore();
+  const { repairs, loading, error, fetchRepairs, deleteRepair, addRepair, updateRepairDiagnostics } = useRepairStore();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [selectedRepairs, setSelectedRepairs] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedStatusRepair, setSelectedStatusRepair] = useState<string | null>(null);
+  const [showDiagnosticModal, setShowDiagnosticModal] = useState(false);
+  const [selectedRepairForDiagnostic, setSelectedRepairForDiagnostic] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRepairs();
@@ -44,6 +49,23 @@ const RepairList = () => {
       setShowDeleteConfirm(null);
     } catch (error) {
       console.error('Error deleting repairs:', error);
+    }
+  };
+
+  const handleEditDiagnostic = (repairId: string) => {
+    setSelectedRepairForDiagnostic(repairId);
+    setShowDiagnosticModal(true);
+  };
+
+  const handleDiagnosticChange = async (diagnostics: DiagnosticData) => {
+    if (!selectedRepairForDiagnostic) return;
+    
+    try {
+      await updateRepairDiagnostics(selectedRepairForDiagnostic, diagnostics);
+      setShowDiagnosticModal(false);
+      setSelectedRepairForDiagnostic(null);
+    } catch (error) {
+      console.error('Error updating diagnostics:', error);
     }
   };
 
@@ -83,6 +105,10 @@ const RepairList = () => {
     );
   }
 
+  const selectedRepair = selectedRepairForDiagnostic 
+    ? repairs.find(repair => repair.id === selectedRepairForDiagnostic)
+    : null;
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -93,10 +119,19 @@ const RepairList = () => {
               for (const row of data) {
                 try {
                   await addRepair({
-                    device_id: row.device_id || '',
-                    description: row.description || row.Description || '',
-                    estimated_cost: parseFloat(row.estimated_cost || row['Coût estimé'] || '0'),
-                    status: row.status || REPAIR_STATUS.PENDING
+                    customer: {
+                      name: row.customer_name || '',
+                      email: row.customer_email,
+                      phone: row.customer_phone,
+                      address: row.customer_address
+                    },
+                    device: {
+                      brand: row.device_brand || '',
+                      model: row.device_model || '',
+                      serial_number: row.device_serial_number
+                    },
+                    description: row.description || '',
+                    estimated_cost: parseFloat(row.estimated_cost || '0')
                   });
                 } catch (error) {
                   console.error('Error importing repair:', error);
@@ -184,6 +219,9 @@ const RepairList = () => {
                 Description
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Diagnostic
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Statut
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -228,6 +266,37 @@ const RepairList = () => {
                 <td className="px-6 py-4">
                   <div className="text-sm text-gray-900">{repair.description}</div>
                 </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center space-x-2">
+                    {repair.diagnostics ? (
+                      <>
+                        <DiagnosticReportButton
+                          diagnosticData={repair.diagnostics}
+                          deviceInfo={{
+                            brand: repair.devices?.brand || '',
+                            model: repair.devices?.model || '',
+                            serial_number: repair.devices?.serial_number
+                          }}
+                          createdAt={repair.created_at}
+                        />
+                        <button
+                          onClick={() => handleEditDiagnostic(repair.id)}
+                          className="text-gray-600 hover:text-gray-900"
+                        >
+                          <Tool className="h-4 w-4" />
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => handleEditDiagnostic(repair.id)}
+                        className="inline-flex items-center text-indigo-600 hover:text-indigo-900"
+                      >
+                        <Stethoscope className="h-4 w-4 mr-1" />
+                        Ajouter
+                      </button>
+                    )}
+                  </div>
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap relative">
                   <button
                     onClick={() => setSelectedStatusRepair(repair.id)}
@@ -249,7 +318,7 @@ const RepairList = () => {
                   {repair.estimated_cost ? `${repair.estimated_cost} €` : '-'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Date(repair.created_at).toLocaleDateString('fr-FR')}
+                  {new Date(repair.created_at).toLocaleString('fr-FR')}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div className="flex items-center justify-end space-x-2">
@@ -288,7 +357,7 @@ const RepairList = () => {
             ))}
             {filteredRepairs.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
+                <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
                   Aucune réparation trouvée
                 </td>
               </tr>
@@ -322,6 +391,18 @@ const RepairList = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {showDiagnosticModal && selectedRepair && (
+        <DiagnosticModal
+          isOpen={showDiagnosticModal}
+          onClose={() => {
+            setShowDiagnosticModal(false);
+            setSelectedRepairForDiagnostic(null);
+          }}
+          onChange={handleDiagnosticChange}
+          initialValues={selectedRepair.diagnostics}
+        />
       )}
     </div>
   );

@@ -10,6 +10,7 @@ interface CustomerState {
   loading: boolean;
   error: string | null;
   fetchCustomers: () => Promise<void>;
+  getCustomerOptions: () => Array<{ id: string; label: string; }>;
   addCustomer: (customer: Omit<Customer, 'id' | 'created_at'>, devices: Array<Omit<Device, 'id' | 'created_at' | 'customer_id'>>) => Promise<Customer | null>;
   addDevice: (customerId: string, device: Omit<Device, 'id' | 'created_at' | 'customer_id'>) => Promise<Device | null>;
   deleteCustomer: (customerId: string) => Promise<void>;
@@ -19,6 +20,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
   customers: [],
   loading: false,
   error: null,
+
   fetchCustomers: async () => {
     set({ loading: true, error: null });
     try {
@@ -35,6 +37,14 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
       set({ loading: false });
     }
   },
+
+  getCustomerOptions: () => {
+    return get().customers.map(customer => ({
+      id: customer.id,
+      label: `${customer.name}${customer.phone ? ` - ${customer.phone}` : ''}`
+    }));
+  },
+
   addCustomer: async (customerData, devices) => {
     set({ loading: true, error: null });
     try {
@@ -68,6 +78,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
       set({ loading: false });
     }
   },
+
   addDevice: async (customerId, deviceData) => {
     set({ loading: true, error: null });
     try {
@@ -88,62 +99,16 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
       set({ loading: false });
     }
   },
+
   deleteCustomer: async (customerId: string) => {
     set({ loading: true, error: null });
     try {
-      // 1. Récupérer tous les appareils du client
-      const { data: devices, error: devicesError } = await supabase
-        .from('devices')
-        .select('id')
-        .eq('customer_id', customerId);
-
-      if (devicesError) throw devicesError;
-
-      // 2. Pour chaque appareil, supprimer les réparations associées
-      for (const device of (devices || [])) {
-        // 2.1 Récupérer les réparations de l'appareil
-        const { data: repairs, error: repairsError } = await supabase
-          .from('repairs')
-          .select('id')
-          .eq('device_id', device.id);
-
-        if (repairsError) throw repairsError;
-
-        // 2.2 Pour chaque réparation, supprimer les pièces associées
-        for (const repair of (repairs || [])) {
-          const { error: partsError } = await supabase
-            .from('repair_parts')
-            .delete()
-            .eq('repair_id', repair.id);
-
-          if (partsError) throw partsError;
-        }
-
-        // 2.3 Supprimer les réparations
-        const { error: deleteRepairsError } = await supabase
-          .from('repairs')
-          .delete()
-          .eq('device_id', device.id);
-
-        if (deleteRepairsError) throw deleteRepairsError;
-      }
-
-      // 3. Supprimer les appareils
-      const { error: deleteDevicesError } = await supabase
-        .from('devices')
-        .delete()
-        .eq('customer_id', customerId);
-
-      if (deleteDevicesError) throw deleteDevicesError;
-
-      // 4. Supprimer le client
-      const { error: deleteCustomerError } = await supabase
+      const { error } = await supabase
         .from('customers')
         .delete()
         .eq('id', customerId);
 
-      if (deleteCustomerError) throw deleteCustomerError;
-
+      if (error) throw error;
       await get().fetchCustomers();
     } catch (error) {
       set({ error: (error as Error).message });

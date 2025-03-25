@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Save, Calculator } from 'lucide-react';
+import { Plus, Save } from 'lucide-react';
+import { useRepairStore } from '../stores/repairs';
 import { useCustomerStore } from '../stores/customers';
 import { Combobox } from '../components/Combobox';
 import { DeviceSelector } from '../components/DeviceSelector';
 import { PriceCalculator } from '../components/PriceCalculator';
+import { DiagnosticModal, DiagnosticButton } from '../components/DiagnosticModal';
+import type { DiagnosticData } from '../components/DiagnosticForm';
 
 interface DeviceForm {
   brand: string;
   model: string;
   serial_number: string;
-  condition: string;
 }
 
 const RepairForm = () => {
   const navigate = useNavigate();
-  const { addCustomer, loading, error } = useCustomerStore();
+  const { addRepair, loading: repairLoading, error: repairError, successMessage, clearMessages } = useRepairStore();
+  const { fetchCustomers, getCustomerOptions, loading: customerLoading } = useCustomerStore();
 
   const [customerData, setCustomerData] = useState({
     name: '',
@@ -28,46 +31,31 @@ const RepairForm = () => {
     brand: '',
     model: '',
     serial_number: '',
-    condition: '',
   }]);
 
   const [showDeviceSelector, setShowDeviceSelector] = useState(false);
-  const [showNewCustomerFields, setShowNewCustomerFields] = useState(false);
-  const [newCustomerData, setNewCustomerData] = useState({
-    name: '',
-    email: '',
-    phone: ''
-  });
+  const [showDiagnosticModal, setShowDiagnosticModal] = useState(false);
+  const [diagnosticData, setDiagnosticData] = useState<DiagnosticData | null>(null);
 
   const [repairData, setRepairData] = useState({
     description: '',
     estimatedCost: 0,
-    marginPercent: 30, // Marge par défaut de 30%
+    marginPercent: 30,
   });
 
-  const handleCustomerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setCustomerData(prev => ({ ...prev, [name]: value }));
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
+
+  const handleCustomerChange = (value: string) => {
+    setCustomerData(prev => ({ ...prev, name: value }));
   };
 
-  const handleDeviceChange = (index: number, e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleDeviceChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setDevices(prev => prev.map((device, i) => 
       i === index ? { ...device, [name]: value } : device
     ));
-  };
-
-  const addDevice = () => {
-    setDevices(prev => [...prev, {
-      brand: '',
-      model: '',
-      serial_number: '',
-      condition: '',
-    }]);
-  };
-
-  const removeDevice = (index: number) => {
-    setDevices(prev => prev.filter((_, i) => i !== index));
   };
 
   const handlePriceCalculated = (prices: any) => {
@@ -79,13 +67,33 @@ const RepairForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    clearMessages();
+
     try {
-      // Filter out empty devices
-      const validDevices = devices.filter(device => device.brand && device.model);
-      await addCustomer(customerData, validDevices);
-      navigate('/customers');
+      const device = devices[0];
+      if (!device.brand || !device.model) {
+        throw new Error('Veuillez sélectionner un appareil');
+      }
+
+      if (!customerData.name) {
+        throw new Error('Veuillez entrer le nom du client');
+      }
+
+      const repairId = await addRepair({
+        customer: customerData,
+        device: {
+          brand: device.brand,
+          model: device.model,
+          serial_number: device.serial_number
+        },
+        diagnostics: diagnosticData || undefined,
+        description: repairData.description,
+        estimated_cost: repairData.estimatedCost
+      });
+
+      navigate('/repairs', { state: { repairId } });
     } catch (err) {
-      console.error('Error adding customer:', err);
+      console.error('Error adding repair:', err);
     }
   };
 
@@ -104,18 +112,24 @@ const RepairForm = () => {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={repairLoading || customerLoading}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             <Save className="h-4 w-4 mr-2" />
-            {loading ? 'Enregistrement...' : 'Enregistrer'}
+            {repairLoading ? 'Enregistrement...' : 'Enregistrer'}
           </button>
         </div>
       </div>
 
-      {error && (
+      {repairError && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-red-700">{error}</p>
+          <p className="text-red-700">{repairError}</p>
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-md">
+          <p className="text-green-700">{successMessage}</p>
         </div>
       )}
 
@@ -130,8 +144,8 @@ const RepairForm = () => {
                 </label>
                 <Combobox
                   value={customerData.name}
-                  onChange={(value) => setCustomerData(prev => ({ ...prev, name: value }))}
-                  options={[]}
+                  onChange={handleCustomerChange}
+                  options={getCustomerOptions()}
                   placeholder="Sélectionner ou créer un client"
                 />
               </div>
@@ -144,7 +158,7 @@ const RepairForm = () => {
                   type="email"
                   name="email"
                   value={customerData.email}
-                  onChange={handleCustomerChange}
+                  onChange={(e) => setCustomerData(prev => ({ ...prev, email: e.target.value }))}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                 />
               </div>
@@ -157,7 +171,20 @@ const RepairForm = () => {
                   type="tel"
                   name="phone"
                   value={customerData.phone}
-                  onChange={handleCustomerChange}
+                  onChange={(e) => setCustomerData(prev => ({ ...prev, phone: e.target.value }))}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Adresse
+                </label>
+                <input
+                  type="text"
+                  name="address"
+                  value={customerData.address}
+                  onChange={(e) => setCustomerData(prev => ({ ...prev, address: e.target.value }))}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                 />
               </div>
@@ -167,14 +194,20 @@ const RepairForm = () => {
           <div className="bg-white shadow rounded-lg p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-medium text-gray-900">Appareil</h2>
-              <button
-                type="button"
-                onClick={() => setShowDeviceSelector(true)}
-                className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Sélectionner un modèle
-              </button>
+              <div className="flex space-x-2">
+                <DiagnosticButton
+                  diagnosticData={diagnosticData}
+                  onClick={() => setShowDiagnosticModal(true)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowDeviceSelector(true)}
+                  className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Sélectionner un modèle
+                </button>
+              </div>
             </div>
 
             {devices.map((device, index) => (
@@ -193,8 +226,6 @@ const RepairForm = () => {
                       readOnly
                     />
                   </div>
-
-                
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
@@ -222,24 +253,6 @@ const RepairForm = () => {
                     onChange={(e) => handleDeviceChange(index, e)}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    État
-                  </label>
-                  <select
-                    name="condition"
-                    value={device.condition}
-                    onChange={(e) => handleDeviceChange(index, e)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                  >
-                    <option value="">Sélectionner un état</option>
-                    <option value="working">Fonctionnel</option>
-                    <option value="broken">En panne</option>
-                    <option value="water_damage">Dégât des eaux</option>
-                    <option value="screen_broken">Écran cassé</option>
-                  </select>
                 </div>
               </div>
             ))}
@@ -280,10 +293,16 @@ const RepairForm = () => {
             brand,
             model,
             serial_number: '',
-            condition: ''
           }]);
           setShowDeviceSelector(false);
         }}
+      />
+
+      <DiagnosticModal
+        isOpen={showDiagnosticModal}
+        onClose={() => setShowDiagnosticModal(false)}
+        onChange={setDiagnosticData}
+        initialValues={diagnosticData || undefined}
       />
     </div>
   );

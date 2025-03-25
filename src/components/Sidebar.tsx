@@ -11,7 +11,8 @@ import {
   UserCircle,
   LogOut,
   Smartphone,
-  Archive
+  Archive,
+  Stethoscope
 } from 'lucide-react';
 import { useAuthStore } from '../stores/auth';
 
@@ -30,7 +31,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, onToggle }) => {
     { path: '/repairs', icon: Wrench, label: 'Réparations' },
     { path: '/repairs/archived', icon: Archive, label: 'Archives' },
     { path: '/inventory', icon: Package, label: 'Inventaire' },
-    { path: '/imei-check', icon: Smartphone, label: 'Vérification IMEI' },
+    { path: '/diagnostics', icon: Stethoscope, label: 'Diagnostics' },
     { path: '/settings', icon: Settings, label: 'Paramètres', adminOnly: true },
   ];
 
@@ -113,6 +114,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isExpanded, onToggle }) => {
       )}
     </div>
   );
-}
+};
 
 export default Sidebar;
