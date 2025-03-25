@@ -4,14 +4,16 @@ import { RotateCcw } from 'lucide-react';
 interface PatternLockProps {
   onChange: (pattern: string) => void;
   size?: number;
+  initialValue?: string;
 }
 
 export const PatternLock: React.FC<PatternLockProps> = ({
   onChange,
-  size = 300
+  size = 300,
+  initialValue = ''
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [pattern, setPattern] = useState<number[]>([]);
+  const [pattern, setPattern] = useState<number[]>(initialValue ? initialValue.split('-').map(Number) : []);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPoint, setCurrentPoint] = useState<{ x: number; y: number } | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -32,6 +34,15 @@ export const PatternLock: React.FC<PatternLockProps> = ({
     onChange('');
     setShowResetConfirm(false);
   };
+
+  // Dessiner le pattern initial
+  useEffect(() => {
+    if (initialValue && !pattern.length) {
+      const initialPattern = initialValue.split('-').map(Number);
+      setPattern(initialPattern);
+      onChange(initialValue);
+    }
+  }, [initialValue]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -104,7 +115,7 @@ export const PatternLock: React.FC<PatternLockProps> = ({
       const lastPoint = points[pattern[pattern.length - 1]];
       drawLine(lastPoint.x, lastPoint.y, currentPoint.x, currentPoint.y);
     }
-  }, [size, pattern, isDrawing, currentPoint]);
+  }, [size, pattern, isDrawing, currentPoint, points]);
 
   const getPointAtPosition = (x: number, y: number) => {
     const rect = canvasRef.current?.getBoundingClientRect();

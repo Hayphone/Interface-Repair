@@ -36,6 +36,7 @@ const RepairForm = () => {
   const [showDeviceSelector, setShowDeviceSelector] = useState(false);
   const [showDiagnosticModal, setShowDiagnosticModal] = useState(false);
   const [diagnosticData, setDiagnosticData] = useState<DiagnosticData | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const [repairData, setRepairData] = useState({
     description: '',
@@ -49,6 +50,7 @@ const RepairForm = () => {
 
   const handleCustomerChange = (value: string) => {
     setCustomerData(prev => ({ ...prev, name: value }));
+    setValidationError(null);
   };
 
   const handleDeviceChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,6 +58,7 @@ const RepairForm = () => {
     setDevices(prev => prev.map((device, i) => 
       i === index ? { ...device, [name]: value } : device
     ));
+    setValidationError(null);
   };
 
   const handlePriceCalculated = (prices: any) => {
@@ -68,17 +71,21 @@ const RepairForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearMessages();
+    setValidationError(null);
+
+    // Validation
+    if (!customerData.name.trim()) {
+      setValidationError('Veuillez entrer le nom du client');
+      return;
+    }
+
+    const device = devices[0];
+    if (!device.brand || !device.model) {
+      setValidationError('Veuillez sélectionner un appareil');
+      return;
+    }
 
     try {
-      const device = devices[0];
-      if (!device.brand || !device.model) {
-        throw new Error('Veuillez sélectionner un appareil');
-      }
-
-      if (!customerData.name) {
-        throw new Error('Veuillez entrer le nom du client');
-      }
-
       const repairId = await addRepair({
         customer: customerData,
         device: {
@@ -94,6 +101,7 @@ const RepairForm = () => {
       navigate('/repairs', { state: { repairId } });
     } catch (err) {
       console.error('Error adding repair:', err);
+      setValidationError(err instanceof Error ? err.message : 'Une erreur est survenue');
     }
   };
 
@@ -113,13 +121,19 @@ const RepairForm = () => {
             type="button"
             onClick={handleSubmit}
             disabled={repairLoading || customerLoading}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
           >
             <Save className="h-4 w-4 mr-2" />
             {repairLoading ? 'Enregistrement...' : 'Enregistrer'}
           </button>
         </div>
       </div>
+
+      {validationError && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
+          <p className="text-red-700">{validationError}</p>
+        </div>
+      )}
 
       {repairError && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
@@ -215,7 +229,7 @@ const RepairForm = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
-                      Marque
+                      Marque <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -224,12 +238,13 @@ const RepairForm = () => {
                       onChange={(e) => handleDeviceChange(index, e)}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                       readOnly
+                      placeholder="Utilisez le sélecteur d'appareil"
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
-                      Modèle
+                      Modèle <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -238,6 +253,7 @@ const RepairForm = () => {
                       onChange={(e) => handleDeviceChange(index, e)}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                       readOnly
+                      placeholder="Utilisez le sélecteur d'appareil"
                     />
                   </div>
                 </div>
@@ -295,6 +311,7 @@ const RepairForm = () => {
             serial_number: '',
           }]);
           setShowDeviceSelector(false);
+          setValidationError(null);
         }}
       />
 
