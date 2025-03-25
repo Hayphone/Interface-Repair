@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { RotateCcw } from 'lucide-react';
 
 interface PatternLockProps {
   onChange: (pattern: string) => void;
@@ -13,6 +14,7 @@ export const PatternLock: React.FC<PatternLockProps> = ({
   const [pattern, setPattern] = useState<number[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPoint, setCurrentPoint] = useState<{ x: number; y: number } | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const pointRadius = size / 20;
   const gridSize = 3;
@@ -22,6 +24,14 @@ export const PatternLock: React.FC<PatternLockProps> = ({
     y: padding + Math.floor(i / gridSize) * ((size - 2 * padding) / (gridSize - 1)),
     index: i
   }));
+
+  const resetPattern = () => {
+    setPattern([]);
+    setIsDrawing(false);
+    setCurrentPoint(null);
+    onChange('');
+    setShowResetConfirm(false);
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -176,6 +186,35 @@ export const PatternLock: React.FC<PatternLockProps> = ({
         className="touch-none"
         style={{ cursor: 'pointer' }}
       />
+      {pattern.length > 0 && (
+        <div className="mt-4 flex justify-end">
+          {showResetConfirm ? (
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-600">Confirmer la réinitialisation ?</span>
+              <button
+                onClick={resetPattern}
+                className="px-3 py-1 text-sm text-white bg-red-600 rounded-md hover:bg-red-700"
+              >
+                Oui
+              </button>
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="px-3 py-1 text-sm text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              >
+                Non
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowResetConfirm(true)}
+              className="inline-flex items-center px-3 py-1 text-sm text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+            >
+              <RotateCcw className="h-4 w-4 mr-1" />
+              Réinitialiser
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
