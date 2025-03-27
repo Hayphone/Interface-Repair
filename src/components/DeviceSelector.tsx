@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Search } from 'lucide-react';
 
 interface DeviceSelectorProps {
   isOpen: boolean;
@@ -61,30 +61,6 @@ const brands: BrandCategory[] = [
         ]
       },
       {
-        title: 'iPad',
-        devices: [
-          { id: 'ipad10', name: 'iPad 10 (2022)' },
-          { id: 'ipad9', name: 'iPad 9 (2021)' },
-          { id: 'ipad8', name: 'iPad 8 (2020)' },
-          { id: 'ipad7', name: 'iPad 7 (2019)' },
-          { id: 'ipad6', name: 'iPad 6 (2018)' },
-          { id: 'ipad5', name: 'iPad 5 (2017)' },
-        ]
-      },
-      {
-        title: 'iPad Pro',
-        devices: [
-          { id: 'ipadpro13_7', name: 'iPad Pro 13" 7e Gén (2024)' },
-          { id: 'ipadpro129_6', name: 'iPad Pro 12.9" 6e Gén (2022)' },
-          { id: 'ipadpro129_5', name: 'iPad Pro 12.9" 5e Gén (2021)' },
-          { id: 'ipadpro129_4', name: 'iPad Pro 12.9" 4e Gén (2020)' },
-          { id: 'ipadpro129_3', name: 'iPad Pro 12.9" 3e Gén (2018)' },
-          { id: 'ipadpro11_5', name: 'iPad Pro 11" 5e Gén (2024)' },
-          { id: 'ipadpro11_4', name: 'iPad Pro 11" 4e Gén (2022)' },
-          { id: 'ipadpro11_3', name: 'iPad Pro 11" 3e Gén (2021)' },
-        ]
-      },
-      {
         title: 'iPad Air',
         devices: [
           { id: 'ipadair6_13', name: 'iPad Air 6 13" (2024)' },
@@ -114,6 +90,30 @@ const brands: BrandCategory[] = [
           { id: 'watch7_41', name: 'Series 7 (41mm)' },
           { id: 'watchse2_44', name: 'Series SE2 (44mm)' },
           { id: 'watchse2_40', name: 'Series SE2 (40mm)' },
+        ]
+      },
+      {
+        title: 'iPad Pro',
+        devices: [
+          { id: 'ipadpro13_7', name: 'iPad Pro 13" 7e Gén (2024)' },
+          { id: 'ipadpro129_6', name: 'iPad Pro 12.9" 6e Gén (2022)' },
+          { id: 'ipadpro129_5', name: 'iPad Pro 12.9" 5e Gén (2021)' },
+          { id: 'ipadpro129_4', name: 'iPad Pro 12.9" 4e Gén (2020)' },
+          { id: 'ipadpro129_3', name: 'iPad Pro 12.9" 3e Gén (2018)' },
+          { id: 'ipadpro11_5', name: 'iPad Pro 11" 5e Gén (2024)' },
+          { id: 'ipadpro11_4', name: 'iPad Pro 11" 4e Gén (2022)' },
+          { id: 'ipadpro11_3', name: 'iPad Pro 11" 3e Gén (2021)' },
+        ]
+      },
+      {
+        title: 'iPad',
+        devices: [
+          { id: 'ipad10', name: 'iPad 10 (2022)' },
+          { id: 'ipad9', name: 'iPad 9 (2021)' },
+          { id: 'ipad8', name: 'iPad 8 (2020)' },
+          { id: 'ipad7', name: 'iPad 7 (2019)' },
+          { id: 'ipad6', name: 'iPad 6 (2018)' },
+          { id: 'ipad5', name: 'iPad 5 (2017)' },
         ]
       }
     ]
@@ -236,109 +236,140 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
   onSelect,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [expandedBrand, setExpandedBrand] = useState<string | null>(null);
-  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [selectedBrand, setSelectedBrand] = useState(brands[0].name);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSearchTerm('');
+      setSelectedBrand(brands[0].name);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleBrandClick = (brandName: string) => {
-    setExpandedBrand(expandedBrand === brandName ? null : brandName);
-    setExpandedCategory(null);
-  };
+  const currentBrand = brands.find(b => b.name === selectedBrand);
+  const allDevices = brands.flatMap(brand => 
+    brand.categories.flatMap(category => 
+      category.devices.map(device => ({
+        ...device,
+        brand: brand.name,
+        category: category.title
+      }))
+    )
+  );
 
-  const handleCategoryClick = (categoryTitle: string) => {
-    setExpandedCategory(expandedCategory === categoryTitle ? null : categoryTitle);
-  };
-
-  const filteredBrands = brands.map(brand => ({
-    ...brand,
-    categories: brand.categories.map(category => ({
-      ...category,
-      devices: category.devices.filter(device =>
-        device.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredDevices = searchTerm
+    ? allDevices.filter(device =>
+        device.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        device.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        device.category.toLowerCase().includes(searchTerm.toLowerCase())
       )
-    })).filter(category => category.devices.length > 0)
-  })).filter(brand => brand.categories.length > 0);
+    : currentBrand?.categories.flatMap(category => 
+        category.devices.map(device => ({
+          ...device,
+          brand: currentBrand.name,
+          category: category.title
+        }))
+      ) || [];
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl h-[80vh] flex flex-col">
-        <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-lg font-semibold text-gray-900">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl h-[80vh] flex flex-col">
+        {/* Header */}
+        <div className="flex justify-between items-center p-3 border-b">
+          <h2 className="text-base font-medium text-gray-900">
             Sélectionner un appareil
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-500"
+            className="text-gray-400 hover:text-gray-500 p-1"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="p-4 border-b">
-          <input
-            type="text"
-            placeholder="Rechercher un modèle..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
+        {/* Search bar */}
+        <div className="p-2 border-b">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Rechercher un modèle..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-3 py-1.5 pl-8 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+            <Search className="absolute left-2 top-2 h-4 w-4 text-gray-400" />
+          </div>
         </div>
 
-        <div className="flex-1 overflow-auto p-4">
-          <div className="space-y-4">
-            {filteredBrands.map((brand) => (
-              <div key={brand.name} className="border rounded-lg overflow-hidden">
-                <button
-                  onClick={() => handleBrandClick(brand.name)}
-                  className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
-                >
-                  <span className="text-lg font-medium">{brand.name}</span>
-                  <ChevronDown
-                    className={`h-5 w-5 transform transition-transform ${
-                      expandedBrand === brand.name ? 'rotate-180' : ''
-                    }`}
-                  />
-                </button>
-                
-                {expandedBrand === brand.name && (
-                  <div className="p-4 space-y-4">
-                    {brand.categories.map((category) => (
-                      <div key={category.title} className="border rounded-lg">
-                        <button
-                          onClick={() => handleCategoryClick(category.title)}
-                          className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors"
-                        >
-                          <span className="font-medium">{category.title}</span>
-                          <ChevronDown
-                            className={`h-4 w-4 transform transition-transform ${
-                              expandedCategory === category.title ? 'rotate-180' : ''
-                            }`}
-                          />
-                        </button>
-                        
-                        {expandedCategory === category.title && (
-                          <div className="p-2 space-y-1">
-                            {category.devices.map((device) => (
-                              <button
-                                key={device.id}
-                                onClick={() => {
-                                  onSelect(brand.name, device.name);
-                                  onClose();
-                                }}
-                                className="w-full text-left px-3 py-2 rounded-md hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                              >
-                                {device.name}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+        {/* Main content */}
+        <div className="flex flex-1 min-h-0">
+          {/* Brand tabs */}
+          <div className="w-32 border-r bg-gray-50 flex flex-col overflow-y-auto">
+            {brands.map((brand) => (
+              <button
+                key={brand.name}
+                onClick={() => setSelectedBrand(brand.name)}
+                className={`text-left px-3 py-1.5 text-sm transition-colors ${
+                  selectedBrand === brand.name
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                {brand.name}
+              </button>
             ))}
+          </div>
+
+          {/* Device list */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="grid grid-cols-3 gap-4 p-4">
+              {currentBrand?.categories
+                .sort((a, b) => {
+                  // Ordre personnalisé pour les catégories Apple
+                  const order = ['iPhone', 'iPad Pro', 'iPad Air', 'iPad', 'iPad mini', 'Apple Watch'];
+                  return order.indexOf(a.title) - order.indexOf(b.title);
+                })
+                .map((category) => (
+                  <div key={category.title} className="space-y-1">
+                    <h3 className="text-xs font-medium text-gray-500 mb-1">
+                      {category.title}
+                    </h3>
+                    <div className="space-y-0.5">
+                      {category.devices.map((device) => (
+                        <button
+                          key={device.id}
+                          onClick={() => {
+                            onSelect(currentBrand.name, device.name);
+                            onClose();
+                          }}
+                          className="w-full text-left px-1 py-0.5 text-sm rounded hover:bg-indigo-50 transition-colors"
+                        >
+                          {device.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+            </div>
+
+            {searchTerm && (
+              <div className="p-4 space-y-1">
+                {filteredDevices.map((device) => (
+                  <button
+                    key={device.id}
+                    onClick={() => {
+                      onSelect(device.brand, device.name);
+                      onClose();
+                    }}
+                    className="w-full text-left p-1.5 text-sm rounded hover:bg-indigo-50 transition-colors"
+                  >
+                    <div className="font-medium">{device.name}</div>
+                    <div className="text-xs text-gray-500">{device.category}</div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

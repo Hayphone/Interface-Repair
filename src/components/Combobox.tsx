@@ -3,8 +3,18 @@ import { ChevronDown, Check, Plus } from 'lucide-react';
 
 interface ComboboxProps {
   value: string;
-  onChange: (value: string) => void;
-  options: Array<{ id: string; label: string; }>;
+  onChange: (value: string, customer?: { 
+    email?: string;
+    phone?: string;
+    address?: string;
+  }) => void;
+  options: Array<{ 
+    id: string; 
+    label: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+  }>;
   placeholder?: string;
   className?: string;
   allowNew?: boolean;
@@ -59,9 +69,13 @@ export const Combobox: React.FC<ComboboxProps> = ({
     setIsOpen(true);
   };
 
-  const handleOptionSelect = (optionLabel: string) => {
-    onChange(optionLabel);
-    setInputValue(optionLabel);
+  const handleOptionSelect = (option: typeof options[0]) => {
+    onChange(option.label, {
+      email: option.email,
+      phone: option.phone,
+      address: option.address
+    });
+    setInputValue(option.label);
     setIsOpen(false);
     inputRef.current?.blur();
   };
@@ -69,7 +83,9 @@ export const Combobox: React.FC<ComboboxProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && allowNew && inputValue.trim()) {
       e.preventDefault();
-      handleOptionSelect(inputValue.trim());
+      onChange(inputValue.trim());
+      setIsOpen(false);
+      inputRef.current?.blur();
     } else if (e.key === 'Escape') {
       setIsOpen(false);
       setInputValue(value);
@@ -107,14 +123,21 @@ export const Combobox: React.FC<ComboboxProps> = ({
           {filteredOptions.map((option) => (
             <li
               key={option.id}
-              onClick={() => handleOptionSelect(option.label)}
+              onClick={() => handleOptionSelect(option)}
               className={`relative cursor-pointer select-none py-2 pl-3 pr-9 hover:bg-indigo-50 ${
                 value === option.label ? 'bg-indigo-50' : ''
               }`}
             >
-              <span className="block truncate">
-                {option.label}
-              </span>
+              <div>
+                <span className="block truncate font-medium">
+                  {option.label}
+                </span>
+                {option.phone && (
+                  <span className="block truncate text-xs text-gray-500">
+                    {option.phone}
+                  </span>
+                )}
+              </div>
               {value === option.label && (
                 <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-indigo-600">
                   <Check className="h-4 w-4" />
@@ -124,7 +147,10 @@ export const Combobox: React.FC<ComboboxProps> = ({
           ))}
           {allowNew && inputValue.trim() && !filteredOptions.find(o => o.label.toLowerCase() === inputValue.toLowerCase()) && (
             <li
-              onClick={() => handleOptionSelect(inputValue.trim())}
+              onClick={() => {
+                onChange(inputValue.trim());
+                setIsOpen(false);
+              }}
               className="relative cursor-pointer select-none py-2 pl-3 pr-9 text-indigo-600 hover:bg-indigo-50"
             >
               <div className="flex items-center">

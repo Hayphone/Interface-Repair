@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calculator } from 'lucide-react';
+import { Calculator, Info } from 'lucide-react';
 
 interface PriceCalculatorProps {
   onPriceCalculated?: (prices: {
@@ -12,6 +12,7 @@ interface PriceCalculatorProps {
     marginTTC: number;
     shippingCost: number;
     totalAmount: number;
+    tvaAmount: number;
   }) => void;
   initialValues?: {
     costHT?: number;
@@ -20,11 +21,18 @@ interface PriceCalculatorProps {
   };
 }
 
+type TvaOption = {
+  rate: number;
+  label: string;
+  isMarginBased?: boolean;
+  tooltip?: string;
+};
+
 export const PriceCalculator: React.FC<PriceCalculatorProps> = ({
   onPriceCalculated,
   initialValues = {}
 }) => {
-  const [tvaRate, setTvaRate] = useState(20);
+  const [tvaOption, setTvaOption] = useState<TvaOption>({ rate: 20, label: '20%' });
   const [costHT, setCostHT] = useState(initialValues.costHT || 0);
   const [costTTC, setCostTTC] = useState(0);
   const [priceHT, setPriceHT] = useState(0);
@@ -34,84 +42,184 @@ export const PriceCalculator: React.FC<PriceCalculatorProps> = ({
   const [marginTTC, setMarginTTC] = useState(0);
   const [shippingCost, setShippingCost] = useState(initialValues.shippingCost || 10);
   const [totalAmount, setTotalAmount] = useState(0);
+  const [tvaAmount, setTvaAmount] = useState(0);
   const [activeField, setActiveField] = useState<string | null>(null);
+  const [showTooltip, setShowTooltip] = useState(false);
 
-  const tvaRates = [20, 10, 8.5, 5.5, 2.1, 0];
+  const tvaOptions: TvaOption[] = [
+    { rate: 20, label: '20%' },
+    { rate: 10, label: '10%' },
+    { rate: 8.5, label: '8.5%' },
+    { rate: 5.5, label: '5.5%' },
+    { rate: 2.1, label: '2.1%' },
+    { 
+      rate: 20, 
+      label: 'TVA sur marge (France)', 
+      isMarginBased: true,
+      tooltip: 'Appliqué uniquement sur la marge bénéficiaire. Recommandé pour les produits d\'occasion (conformément à l\'article 297 A du CGI).'
+    },
+    { rate: 0, label: '0%' }
+  ];
 
   const round = (value: number) => Math.round(value * 100) / 100;
 
   const calculateFromCostHT = (value: number) => {
-    const costTTC = round(value * (1 + tvaRate / 100));
+    const costTTC = round(value * (1 + tvaOption.rate / 100));
     const priceHT = round(value * (1 + marginPercent / 100));
-    const priceTTC = round(priceHT * (1 + tvaRate / 100));
     const marginHT = round(priceHT - value);
-    const marginTTC = round(priceTTC - costTTC);
-    const total = round(priceTTC + shippingCost);
 
-    return { costTTC, priceHT, priceTTC, marginHT, marginTTC, total };
+    let calculatedTVA: number;
+    let calculatedPriceTTC: number;
+
+    if (tvaOption.isMarginBased) {
+      // TVA sur marge: TVA uniquement sur la marge
+      calculatedTVA = round(marginHT * (tvaOption.rate / 100));
+      calculatedPriceTTC = round(value + marginHT + calculatedTVA);
+    } else {
+      // TVA classique: TVA sur le prix HT total
+      calculatedTVA = round(priceHT * (tvaOption.rate / 100));
+      calculatedPriceTTC = round(priceHT * (1 + tvaOption.rate / 100));
+    }
+
+    const marginTTC = round(calculatedPriceTTC - costTTC);
+    const total = round(calculatedPriceTTC + shippingCost);
+
+    return { 
+      costTTC, 
+      priceHT, 
+      priceTTC: calculatedPriceTTC, 
+      marginHT, 
+      marginTTC, 
+      total,
+      tvaAmount: calculatedTVA 
+    };
   };
 
   const calculateFromCostTTC = (value: number) => {
-    const costHT = round(value / (1 + tvaRate / 100));
+    const costHT = round(value / (1 + tvaOption.rate / 100));
     const priceHT = round(costHT * (1 + marginPercent / 100));
-    const priceTTC = round(priceHT * (1 + tvaRate / 100));
     const marginHT = round(priceHT - costHT);
-    const marginTTC = round(priceTTC - value);
-    const total = round(priceTTC + shippingCost);
 
-    return { costHT, priceHT, priceTTC, marginHT, marginTTC, total };
+    let calculatedTVA: number;
+    let calculatedPriceTTC: number;
+
+    if (tvaOption.isMarginBased) {
+      calculatedTVA = round(marginHT * (tvaOption.rate / 100));
+      calculatedPriceTTC = round(costHT + marginHT + calculatedTVA);
+    } else {
+      calculatedTVA = round(priceHT * (tvaOption.rate / 100));
+      calculatedPriceTTC = round(priceHT * (1 + tvaOption.rate / 100));
+    }
+
+    const marginTTC = round(calculatedPriceTTC - value);
+    const total = round(calculatedPriceTTC + shippingCost);
+
+    return { 
+      costHT, 
+      priceHT, 
+      priceTTC: calculatedPriceTTC, 
+      marginHT, 
+      marginTTC, 
+      total,
+      tvaAmount: calculatedTVA 
+    };
   };
 
   const calculateFromPriceHT = (value: number) => {
-    const priceTTC = round(value * (1 + tvaRate / 100));
     const costHT = round(value / (1 + marginPercent / 100));
-    const costTTC = round(costHT * (1 + tvaRate / 100));
+    const costTTC = round(costHT * (1 + tvaOption.rate / 100));
     const marginHT = round(value - costHT);
-    const marginTTC = round(priceTTC - costTTC);
-    const total = round(priceTTC + shippingCost);
 
-    return { costHT, costTTC, priceTTC, marginHT, marginTTC, total };
+    let calculatedTVA: number;
+    let calculatedPriceTTC: number;
+
+    if (tvaOption.isMarginBased) {
+      calculatedTVA = round(marginHT * (tvaOption.rate / 100));
+      calculatedPriceTTC = round(costHT + marginHT + calculatedTVA);
+    } else {
+      calculatedTVA = round(value * (tvaOption.rate / 100));
+      calculatedPriceTTC = round(value * (1 + tvaOption.rate / 100));
+    }
+
+    const marginTTC = round(calculatedPriceTTC - costTTC);
+    const total = round(calculatedPriceTTC + shippingCost);
+
+    return { 
+      costHT, 
+      costTTC, 
+      priceTTC: calculatedPriceTTC, 
+      marginHT, 
+      marginTTC, 
+      total,
+      tvaAmount: calculatedTVA 
+    };
   };
 
   const calculateFromPriceTTC = (value: number) => {
-    const priceHT = round(value / (1 + tvaRate / 100));
-    const costHT = round(priceHT / (1 + marginPercent / 100));
-    const costTTC = round(costHT * (1 + tvaRate / 100));
-    const marginHT = round(priceHT - costHT);
+    let priceHT: number;
+    let costHT: number;
+    let marginHT: number;
+    let calculatedTVA: number;
+
+    if (tvaOption.isMarginBased) {
+      // Pour la TVA sur marge, on doit d'abord déterminer la marge HT
+      const basePrice = value - shippingCost; // Prix TTC sans frais de port
+      const tvaRate = tvaOption.rate / 100;
+      
+      // On résout l'équation: basePrice = costHT + marginHT + (marginHT * tvaRate)
+      // Où marginHT = priceHT - costHT
+      costHT = round(basePrice / (1 + marginPercent / 100 * (1 + tvaRate)));
+      priceHT = round(costHT * (1 + marginPercent / 100));
+      marginHT = round(priceHT - costHT);
+      calculatedTVA = round(marginHT * tvaRate);
+    } else {
+      priceHT = round(value / (1 + tvaOption.rate / 100));
+      costHT = round(priceHT / (1 + marginPercent / 100));
+      marginHT = round(priceHT - costHT);
+      calculatedTVA = round(priceHT * (tvaOption.rate / 100));
+    }
+
+    const costTTC = round(costHT * (1 + tvaOption.rate / 100));
     const marginTTC = round(value - costTTC);
     const total = round(value + shippingCost);
 
-    return { costHT, costTTC, priceHT, marginHT, marginTTC, total };
+    return { 
+      costHT, 
+      costTTC, 
+      priceHT, 
+      marginHT, 
+      marginTTC, 
+      total,
+      tvaAmount: calculatedTVA 
+    };
   };
 
   const calculateFromMarginPercent = (value: number) => {
     const priceHT = round(costHT * (1 + value / 100));
-    const priceTTC = round(priceHT * (1 + tvaRate / 100));
     const marginHT = round(priceHT - costHT);
-    const marginTTC = round(priceTTC - costTTC);
-    const total = round(priceTTC + shippingCost);
 
-    return { priceHT, priceTTC, marginHT, marginTTC, total };
-  };
+    let calculatedTVA: number;
+    let calculatedPriceTTC: number;
 
-  const calculateFromMarginHT = (value: number) => {
-    const priceHT = round(costHT + value);
-    const priceTTC = round(priceHT * (1 + tvaRate / 100));
-    const marginPercent = round((value / costHT) * 100);
-    const marginTTC = round(priceTTC - costTTC);
-    const total = round(priceTTC + shippingCost);
+    if (tvaOption.isMarginBased) {
+      calculatedTVA = round(marginHT * (tvaOption.rate / 100));
+      calculatedPriceTTC = round(costHT + marginHT + calculatedTVA);
+    } else {
+      calculatedTVA = round(priceHT * (tvaOption.rate / 100));
+      calculatedPriceTTC = round(priceHT * (1 + tvaOption.rate / 100));
+    }
 
-    return { priceHT, priceTTC, marginPercent, marginTTC, total };
-  };
+    const marginTTC = round(calculatedPriceTTC - costTTC);
+    const total = round(calculatedPriceTTC + shippingCost);
 
-  const calculateFromMarginTTC = (value: number) => {
-    const priceTTC = round(costTTC + value);
-    const priceHT = round(priceTTC / (1 + tvaRate / 100));
-    const marginHT = round(priceHT - costHT);
-    const marginPercent = round((marginHT / costHT) * 100);
-    const total = round(priceTTC + shippingCost);
-
-    return { priceHT, priceTTC, marginHT, marginPercent, total };
+    return { 
+      priceHT, 
+      priceTTC: calculatedPriceTTC, 
+      marginHT, 
+      marginTTC, 
+      total,
+      tvaAmount: calculatedTVA 
+    };
   };
 
   useEffect(() => {
@@ -123,8 +231,9 @@ export const PriceCalculator: React.FC<PriceCalculatorProps> = ({
       setMarginHT(result.marginHT);
       setMarginTTC(result.marginTTC);
       setTotalAmount(result.total);
+      setTvaAmount(result.tvaAmount);
     }
-  }, [costHT, tvaRate, marginPercent, shippingCost]);
+  }, [costHT, tvaOption, marginPercent, shippingCost]);
 
   useEffect(() => {
     if (onPriceCalculated) {
@@ -137,10 +246,11 @@ export const PriceCalculator: React.FC<PriceCalculatorProps> = ({
         marginHT,
         marginTTC,
         shippingCost,
-        totalAmount
+        totalAmount,
+        tvaAmount
       });
     }
-  }, [costHT, costTTC, priceHT, priceTTC, marginPercent, marginHT, marginTTC, shippingCost, totalAmount]);
+  }, [costHT, costTTC, priceHT, priceTTC, marginPercent, marginHT, marginTTC, shippingCost, totalAmount, tvaAmount]);
 
   const handleInputChange = (field: string, value: string) => {
     const numValue = parseFloat(value) || 0;
@@ -157,6 +267,7 @@ export const PriceCalculator: React.FC<PriceCalculatorProps> = ({
           setMarginHT(result.marginHT);
           setMarginTTC(result.marginTTC);
           setTotalAmount(result.total);
+          setTvaAmount(result.tvaAmount);
         }
         break;
 
@@ -170,6 +281,7 @@ export const PriceCalculator: React.FC<PriceCalculatorProps> = ({
           setMarginHT(result.marginHT);
           setMarginTTC(result.marginTTC);
           setTotalAmount(result.total);
+          setTvaAmount(result.tvaAmount);
         }
         break;
 
@@ -183,6 +295,7 @@ export const PriceCalculator: React.FC<PriceCalculatorProps> = ({
           setMarginHT(result.marginHT);
           setMarginTTC(result.marginTTC);
           setTotalAmount(result.total);
+          setTvaAmount(result.tvaAmount);
         }
         break;
 
@@ -196,6 +309,7 @@ export const PriceCalculator: React.FC<PriceCalculatorProps> = ({
           setMarginHT(result.marginHT);
           setMarginTTC(result.marginTTC);
           setTotalAmount(result.total);
+          setTvaAmount(result.tvaAmount);
         }
         break;
 
@@ -208,30 +322,7 @@ export const PriceCalculator: React.FC<PriceCalculatorProps> = ({
           setMarginHT(result.marginHT);
           setMarginTTC(result.marginTTC);
           setTotalAmount(result.total);
-        }
-        break;
-
-      case 'marginHT':
-        setMarginHT(numValue);
-        if (costHT > 0) {
-          const result = calculateFromMarginHT(numValue);
-          setPriceHT(result.priceHT);
-          setPriceTTC(result.priceTTC);
-          setMarginPercent(result.marginPercent);
-          setMarginTTC(result.marginTTC);
-          setTotalAmount(result.total);
-        }
-        break;
-
-      case 'marginTTC':
-        setMarginTTC(numValue);
-        if (costTTC > 0) {
-          const result = calculateFromMarginTTC(numValue);
-          setPriceHT(result.priceHT);
-          setPriceTTC(result.priceTTC);
-          setMarginHT(result.marginHT);
-          setMarginPercent(result.marginPercent);
-          setTotalAmount(result.total);
+          setTvaAmount(result.tvaAmount);
         }
         break;
 
@@ -251,19 +342,51 @@ export const PriceCalculator: React.FC<PriceCalculatorProps> = ({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
-          <div>
+          <div className="relative">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               TVA (%)
             </label>
-            <select
-              value={tvaRate}
-              onChange={(e) => setTvaRate(parseFloat(e.target.value))}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-            >
-              {tvaRates.map(rate => (
-                <option key={rate} value={rate}>{rate}%</option>
-              ))}
-            </select>
+            <div className="flex items-center">
+              <select
+                value={tvaOptions.findIndex(opt => 
+                  opt.rate === tvaOption.rate && opt.isMarginBased === tvaOption.isMarginBased
+                )}
+                onChange={(e) => setTvaOption(tvaOptions[parseInt(e.target.value)])}
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              >
+                {tvaOptions.map((opt, index) => (
+                  <option key={index} value={index}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              {tvaOption.tooltip && (
+                <div className="relative ml-2">
+                  <Info
+                    className="h-5 w-5 text-gray-400 cursor-help"
+                    onMouseEnter={() => setShowTooltip(true)}
+                    onMouseLeave={() => setShowTooltip(false)}
+                  />
+                  {showTooltip && (
+                    <div className="absolute z-10 w-72 px-3 py-2 text-sm text-white bg-gray-900 rounded-lg shadow-sm -right-2 top-6">
+                      {tvaOption.tooltip}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              TVA (€)
+            </label>
+            <input
+              type="text"
+              value={tvaAmount.toFixed(2)}
+              readOnly
+              className="w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            />
           </div>
 
           <div>
@@ -347,8 +470,8 @@ export const PriceCalculator: React.FC<PriceCalculatorProps> = ({
               min="0"
               step="0.01"
               value={marginHT || ''}
-              onChange={(e) => handleInputChange('marginHT', e.target.value)}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              readOnly
+              className="w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
             />
           </div>
 
@@ -361,8 +484,8 @@ export const PriceCalculator: React.FC<PriceCalculatorProps> = ({
               min="0"
               step="0.01"
               value={marginTTC || ''}
-              onChange={(e) => handleInputChange('marginTTC', e.target.value)}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              readOnly
+              className="w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
             />
           </div>
         </div>

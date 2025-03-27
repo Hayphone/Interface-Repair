@@ -48,8 +48,18 @@ const RepairForm = () => {
     fetchCustomers();
   }, [fetchCustomers]);
 
-  const handleCustomerChange = (value: string) => {
-    setCustomerData(prev => ({ ...prev, name: value }));
+  const handleCustomerChange = (value: string, customer?: { 
+    email?: string;
+    phone?: string;
+    address?: string;
+  }) => {
+    setCustomerData(prev => ({ 
+      ...prev, 
+      name: value,
+      email: customer?.email || '',
+      phone: customer?.phone || '',
+      address: customer?.address || ''
+    }));
     setValidationError(null);
   };
 

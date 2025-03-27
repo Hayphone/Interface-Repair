@@ -27,6 +27,7 @@ export interface DiagnosticData {
     glass: string[];
   };
   chassis: string[];
+  backGlass: string;
   mainFunctions: {
     faceId: string;
     frontCamera: string;
@@ -54,6 +55,7 @@ const DiagnosticForm: React.FC<DiagnosticFormProps> = ({
   initialValues
 }) => {
   const [openSections, setOpenSections] = useState<string[]>(['startup']);
+  const [openSubsections, setOpenSubsections] = useState<string[]>([]);
   const [diagnosticData, setDiagnosticData] = useState<DiagnosticData>(
     initialValues || {
       startupState: '',
@@ -63,6 +65,7 @@ const DiagnosticForm: React.FC<DiagnosticFormProps> = ({
         glass: []
       },
       chassis: [],
+      backGlass: '',
       mainFunctions: {
         faceId: '',
         frontCamera: '',
@@ -80,23 +83,6 @@ const DiagnosticForm: React.FC<DiagnosticFormProps> = ({
       }
     }
   );
-
-  const renderIcon = (iconName: string) => {
-    switch (iconName) {
-      case 'Lock':
-        return <Lock className="h-5 w-5 text-gray-500" />;
-      case 'Camera':
-        return <Camera className="h-5 w-5 text-gray-500" />;
-      case 'Volume2':
-        return <Volume2 className="h-5 w-5 text-gray-500" />;
-      case 'Wifi':
-        return <Wifi className="h-5 w-5 text-gray-500" />;
-      case 'Battery':
-        return <Battery className="h-5 w-5 text-gray-500" />;
-      default:
-        return null;
-    }
-  };
 
   const sections = [
     {
@@ -123,6 +109,18 @@ const DiagnosticForm: React.FC<DiagnosticFormProps> = ({
           options: ['Intact', 'Rayures légères', 'Rayures profondes', 'Fissures', 'Se décolle du Bezel']
         }
       ]
+    },
+    {
+      id: 'chassis',
+      title: 'État du châssis',
+      icon: <Smartphone className="h-6 w-6 text-indigo-600" />,
+      options: ['Intact', 'Rayures légères', 'Rayures profondes', 'Bosses légères', 'Bosses importantes', 'Châssis déformé/tordu']
+    },
+    {
+      id: 'backGlass',
+      title: 'Vitre arrière',
+      icon: <Smartphone className="h-6 w-6 text-indigo-600" />,
+      options: ['OK', 'Fissuré']
     },
     {
       id: 'functions',
@@ -171,6 +169,14 @@ const DiagnosticForm: React.FC<DiagnosticFormProps> = ({
     );
   };
 
+  const toggleSubsection = (subsectionId: string) => {
+    setOpenSubsections(prev => 
+      prev.includes(subsectionId) 
+        ? prev.filter(id => id !== subsectionId)
+        : [...prev, subsectionId]
+    );
+  };
+
   const handleChange = (update: Partial<DiagnosticData>) => {
     const newData = { ...diagnosticData, ...update };
     setDiagnosticData(newData);
@@ -211,11 +217,76 @@ const DiagnosticForm: React.FC<DiagnosticFormProps> = ({
       case 'HS':
       case 'Ne répond pas':
       case 'Pas d\'affichage':
+      case 'Fissuré':
         return 'bg-red-50 text-red-700 border-red-200';
       default:
         return 'bg-yellow-50 text-yellow-700 border-yellow-200';
     }
   };
+
+  const renderIcon = (iconName: string) => {
+    switch (iconName) {
+      case 'Lock':
+        return <Lock className="h-5 w-5 text-gray-500" />;
+      case 'Camera':
+        return <Camera className="h-5 w-5 text-gray-500" />;
+      case 'Volume2':
+        return <Volume2 className="h-5 w-5 text-gray-500" />;
+      case 'Wifi':
+        return <Wifi className="h-5 w-5 text-gray-500" />;
+      case 'Battery':
+        return <Battery className="h-5 w-5 text-gray-500" />;
+      default:
+        return null;
+    }
+  };
+
+  const renderFunctionSection = (title: string, field: keyof typeof diagnosticData.mainFunctions, options: string[]) => (
+    <div className="border rounded-lg overflow-hidden bg-white mb-2">
+      <button
+        onClick={() => toggleSubsection(field)}
+        className="w-full flex items-center justify-between p-3 text-left hover:bg-gray-50"
+      >
+        <div className="flex items-center">
+          {renderIcon(field)}
+          <span className="ml-2 font-medium text-gray-700">{title}</span>
+        </div>
+        <ChevronDown
+          className={`h-5 w-5 text-gray-400 transition-transform ${
+            openSubsections.includes(field) ? 'transform rotate-180' : ''
+          }`}
+        />
+      </button>
+      
+      {openSubsections.includes(field) && (
+        <div className="border-t border-gray-100 p-3 space-y-2">
+          {options.map(option => (
+            <label
+              key={option}
+              className={`flex items-center p-2 rounded-md transition-colors cursor-pointer ${
+                diagnosticData.mainFunctions[field] === option
+                  ? getStatusBackground(option)
+                  : 'hover:bg-gray-50'
+              }`}
+            >
+              <input
+                type="radio"
+                checked={diagnosticData.mainFunctions[field] === option}
+                onChange={() => handleChange({
+                  mainFunctions: {
+                    ...diagnosticData.mainFunctions,
+                    [field]: option
+                  }
+                })}
+                className="form-radio h-4 w-4 text-indigo-600"
+              />
+              <span className="ml-2 text-sm">{option}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="space-y-4">
@@ -238,28 +309,61 @@ const DiagnosticForm: React.FC<DiagnosticFormProps> = ({
 
           {openSections.includes(section.id) && (
             <div className="p-4 border-t border-gray-200 bg-gray-50">
-              {'options' in section ? (
+              {section.id === 'functions' ? (
                 <div className="space-y-2">
-                  {section.options.map(option => (
+                  {renderFunctionSection('Face ID', 'faceId', ['OK', 'HS', 'Non applicable'])}
+                  {renderFunctionSection('Caméra FaceTime', 'frontCamera', ['OK', 'Problème de mise au point', 'Image floue', 'HS'])}
+                  {renderFunctionSection('Caméra arrière', 'backCamera', ['OK', 'Problème de mise au point', 'Image floue', 'HS'])}
+                  {renderFunctionSection('Micro', 'microphone', ['OK', 'Grésillements', 'Son faible', 'HS'])}
+                  {renderFunctionSection('Connecteur de charge', 'chargingPort', ['OK', 'Problème de charge', 'HS'])}
+                  {renderFunctionSection('Batterie', 'battery', ['OK', 'Usé', 'Gonflé', 'HS'])}
+                  {renderFunctionSection('Wi-Fi', 'wifi', ['OK', 'Signal faible', 'HS'])}
+                  {renderFunctionSection('Bluetooth', 'bluetooth', ['OK', 'Signal faible', 'HS'])}
+                  {renderFunctionSection('Haut-parleur', 'speaker', ['OK', 'Grésillements', 'Son faible', 'HS'])}
+                </div>
+              ) : section.id === 'chassis' ? (
+                <div className="space-y-2">
+                  {section.options?.map(option => (
                     <label
                       key={option}
                       className={`flex items-center p-3 rounded-lg border transition-colors cursor-pointer ${
-                        diagnosticData[section.id as keyof DiagnosticData] === option 
+                        diagnosticData.chassis.includes(option)
+                          ? getStatusBackground(option)
+                          : 'bg-white border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={diagnosticData.chassis.includes(option)}
+                        onChange={() => handleArrayToggle('chassis', null, option)}
+                        className="form-checkbox h-4 w-4 text-indigo-600"
+                      />
+                      <span className="ml-2">{option}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : section.id === 'backGlass' ? (
+                <div className="space-y-2">
+                  {section.options?.map(option => (
+                    <label
+                      key={option}
+                      className={`flex items-center p-3 rounded-lg border transition-colors cursor-pointer ${
+                        diagnosticData.backGlass === option
                           ? getStatusBackground(option)
                           : 'bg-white border-gray-200 hover:bg-gray-50'
                       }`}
                     >
                       <input
                         type="radio"
-                        checked={diagnosticData[section.id as keyof DiagnosticData] === option}
-                        onChange={() => handleChange({ [section.id]: option } as any)}
+                        checked={diagnosticData.backGlass === option}
+                        onChange={() => handleChange({ backGlass: option })}
                         className="form-radio h-4 w-4 text-indigo-600"
                       />
                       <span className="ml-2">{option}</span>
                     </label>
                   ))}
                 </div>
-              ) : 'subsections' in section ? (
+              ) : section.id === 'screen' ? (
                 <div className="space-y-6">
                   {section.subsections?.map((subsection, idx) => (
                     <div key={idx}>
@@ -363,6 +467,27 @@ const DiagnosticForm: React.FC<DiagnosticFormProps> = ({
                       />
                     </div>
                   )}
+                </div>
+              ) : 'options' in section ? (
+                <div className="space-y-2">
+                  {section.options.map(option => (
+                    <label
+                      key={option}
+                      className={`flex items-center p-3 rounded-lg border transition-colors cursor-pointer ${
+                        diagnosticData[section.id as keyof DiagnosticData] === option 
+                          ? getStatusBackground(option)
+                          : 'bg-white border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        checked={diagnosticData[section.id as keyof DiagnosticData] === option}
+                        onChange={() => handleChange({ [section.id]: option } as any)}
+                        className="form-radio h-4 w-4 text-indigo-600"
+                      />
+                      <span className="ml-2">{option}</span>
+                    </label>
+                  ))}
                 </div>
               ) : null}
             </div>
