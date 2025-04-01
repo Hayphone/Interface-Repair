@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search } from 'lucide-react';
-import { DeviceModel, BrandCategory, samsungDevices, appleDevices } from '../lib/deviceData';
+import { DeviceModel, BrandCategory, samsungDevices, appleDevices, huaweiDevices, oppoDevices } from '../lib/deviceData';
 
 interface DeviceSelectorProps {
   isOpen: boolean;
@@ -17,6 +17,14 @@ const brands: BrandCategory[] = [
   {
     name: 'Samsung',
     categories: samsungDevices
+  },
+  {
+    name: 'Huawei',
+    categories: huaweiDevices
+  },
+  {
+    name: 'Oppo',
+    categories: oppoDevices
   },
   {
     name: 'Xiaomi',

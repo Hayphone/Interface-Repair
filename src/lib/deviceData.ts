@@ -292,4 +292,90 @@ export const appleDevices: DeviceCategory[] = [
   }
 ];
 
+// Données des appareils Huawei
+export const huaweiDevices: DeviceCategory[] = [
+  {
+    title: 'P Series',
+    devices: [
+      { id: 'huaweip60pro', name: 'Huawei P60 Pro', modelNumber: 'ART-L29' },
+      { id: 'huaweip60', name: 'Huawei P60', modelNumber: 'ART-L28' },
+      { id: 'huaweip50pro', name: 'Huawei P50 Pro', modelNumber: 'JAD-LX9' },
+      { id: 'huaweip50', name: 'Huawei P50', modelNumber: 'ABR-LX9' },
+      { id: 'huaweip40pro', name: 'Huawei P40 Pro', modelNumber: 'ELS-NX9' },
+      { id: 'huaweip40', name: 'Huawei P40', modelNumber: 'ANA-NX9' },
+      { id: 'huaweip30pro', name: 'Huawei P30 Pro', modelNumber: 'VOG-L29' },
+      { id: 'huaweip30', name: 'Huawei P30', modelNumber: 'ELE-L29' },
+    ]
+  },
+  {
+    title: 'Mate Series',
+    devices: [
+      { id: 'huaweimate60pro', name: 'Huawei Mate 60 Pro', modelNumber: 'MED-LX9' },
+      { id: 'huaweimate60', name: 'Huawei Mate 60', modelNumber: 'BKL-LX9' },
+      { id: 'huaweimate50pro', name: 'Huawei Mate 50 Pro', modelNumber: 'DCO-LX9' },
+      { id: 'huaweimate50', name: 'Huawei Mate 50', modelNumber: 'CET-LX9' },
+      { id: 'huaweimate40pro', name: 'Huawei Mate 40 Pro', modelNumber: 'NOH-NX9' },
+      { id: 'huaweimate40', name: 'Huawei Mate 40', modelNumber: 'OCE-AN10' },
+      { id: 'huaweimate30pro', name: 'Huawei Mate 30 Pro', modelNumber: 'LIO-L29' },
+      { id: 'huaweimate30', name: 'Huawei Mate 30', modelNumber: 'TAS-L29' },
+    ]
+  },
+  {
+    title: 'Nova Series',
+    devices: [
+      { id: 'huaweinova12pro', name: 'Huawei Nova 12 Pro', modelNumber: 'VKY-L29' },
+      { id: 'huaweinova12', name: 'Huawei Nova 12', modelNumber: 'VKY-L09' },
+      { id: 'huaweinova11pro', name: 'Huawei Nova 11 Pro', modelNumber: 'CMA-LX9' },
+      { id: 'huaweinova11', name: 'Huawei Nova 11', modelNumber: 'CMA-LX2' },
+      { id: 'huaweinova10pro', name: 'Huawei Nova 10 Pro', modelNumber: 'GLA-LX9' },
+      { id: 'huaweinova10', name: 'Huawei Nova 10', modelNumber: 'GLA-LX1' },
+      { id: 'huaweinova9', name: 'Huawei Nova 9', modelNumber: 'NAM-LX9' },
+      { id: 'huaweinova8', name: 'Huawei Nova 8', modelNumber: 'ANG-AN00' },
+    ]
+  }
+];
+
+// Données des appareils Oppo
+export const oppoDevices: DeviceCategory[] = [
+  {
+    title: 'Find Series',
+    devices: [
+      { id: 'oppofindx7ultra', name: 'Oppo Find X7 Ultra', modelNumber: 'PHZ110' },
+      { id: 'oppofindx7pro', name: 'Oppo Find X7 Pro', modelNumber: 'PHY110' },
+      { id: 'oppofindx7', name: 'Oppo Find X7', modelNumber: 'PHW110' },
+      { id: 'oppofindx6pro', name: 'Oppo Find X6 Pro', modelNumber: 'PHK110' },
+      { id: 'oppofindx6', name: 'Oppo Find X6', modelNumber: 'PHJ110' },
+      { id: 'oppofindx5pro', name: 'Oppo Find X5 Pro', modelNumber: 'CPH2413' },
+      { id: 'oppofindx5', name: 'Oppo Find X5', modelNumber: 'CPH2307' },
+      { id: 'oppofindx3pro', name: 'Oppo Find X3 Pro', modelNumber: 'CPH2173' },
+    ]
+  },
+  {
+    title: 'Reno Series',
+    devices: [
+      { id: 'opporeno12pro', name: 'Oppo Reno 12 Pro', modelNumber: 'CPH2527' },
+      { id: 'opporeno12', name: 'Oppo Reno 12', modelNumber: 'CPH2519' },
+      { id: 'opporeno11pro', name: 'Oppo Reno 11 Pro', modelNumber: 'CPH2487' },
+      { id: 'opporeno11', name: 'Oppo Reno 11', modelNumber: 'CPH2477' },
+      { id: 'opporeno10pro', name: 'Oppo Reno 10 Pro', modelNumber: 'CPH2455' },
+      { id: 'opporeno10', name: 'Oppo Reno 10', modelNumber: 'CPH2449' },
+      { id: 'opporeno9pro', name: 'Oppo Reno 9 Pro', modelNumber: 'CPH2423' },
+      { id: 'opporeno9', name: 'Oppo Reno 9', modelNumber: 'CPH2417' },
+    ]
+  },
+  {
+    title: 'A Series',
+    devices: [
+      { id: 'oppoA98', name: 'Oppo A98', modelNumber: 'CPH2529' },
+      { id: 'oppoA78', name: 'Oppo A78', modelNumber: 'CPH2505' },
+      { id: 'oppoA77', name: 'Oppo A77', modelNumber: 'CPH2385' },
+      { id: 'oppoA58', name: 'Oppo A58', modelNumber: 'CPH2481' },
+      { id: 'oppoA57', name: 'Oppo A57', modelNumber: 'CPH2387' },
+      { id: 'oppoA38', name: 'Oppo A38', modelNumber: 'CPH2579' },
+      { id: 'oppoA18', name: 'Oppo A18', modelNumber: 'CPH2569' },
+      { id: 'oppoA17', name: 'Oppo A17', modelNumber: 'CPH2477' },
+    ]
+  }
+];
+
 // Vous pouvez ajouter d'autres marques ici si nécessaire
