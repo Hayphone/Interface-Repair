@@ -13,6 +13,7 @@ import DiagnosticsList from './pages/DiagnosticsList';
 import PublicRepairView from './pages/PublicRepairView';
 import Login from './pages/Login';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { TestDeviceSelector } from './components/TestDeviceSelector';
 
 function App() {
   const [isExpanded, setIsExpanded] = React.useState(true);
@@ -23,6 +24,7 @@ function App() {
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/repairs/:id/public" element={<PublicRepairView />} />
+        <Route path="/test-device-selector" element={<TestDeviceSelector />} />
         
         {/* Protected routes */}
         <Route

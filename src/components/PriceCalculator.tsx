@@ -222,6 +222,113 @@ export const PriceCalculator: React.FC<PriceCalculatorProps> = ({
     };
   };
 
+  const calculateFromMarginHT = (value: number) => {
+    // Vérifier si costHT est valide pour éviter les divisions par zéro
+    if (costHT <= 0) {
+      return {
+        priceHT: 0,
+        priceTTC: 0,
+        marginHT: value,
+        marginTTC: 0,
+        total: 0,
+        tvaAmount: 0,
+        marginPercent: 0
+      };
+    }
+    
+    // Calculer le pourcentage de marge à partir de la marge HT
+    const newMarginPercent = round((value / costHT) * 100);
+    
+    // Calculer le prix HT (coût HT + marge HT)
+    const priceHT = round(costHT + value);
+    
+    // Calculer la TVA et le prix TTC
+    let calculatedTVA: number;
+    let calculatedPriceTTC: number;
+    
+    if (tvaOption.isMarginBased) {
+      // TVA sur marge: TVA uniquement sur la marge
+      calculatedTVA = round(value * (tvaOption.rate / 100));
+      calculatedPriceTTC = round(costHT + value + calculatedTVA);
+    } else {
+      // TVA classique: TVA sur le prix HT total
+      calculatedTVA = round(priceHT * (tvaOption.rate / 100));
+      calculatedPriceTTC = round(priceHT * (1 + tvaOption.rate / 100));
+    }
+    
+    const marginTTC = round(calculatedPriceTTC - costTTC);
+    const total = round(calculatedPriceTTC + shippingCost);
+    
+    return {
+      priceHT,
+      priceTTC: calculatedPriceTTC,
+      marginHT: value,
+      marginTTC,
+      total,
+      tvaAmount: calculatedTVA,
+      marginPercent: newMarginPercent
+    };
+  };
+
+  const calculateFromMarginTTC = (value: number) => {
+    // Méthode plus directe et fiable pour calculer à partir de la marge TTC
+    if (costHT <= 0) {
+      return {
+        priceHT: 0,
+        priceTTC: 0,
+        marginHT: 0,
+        marginTTC: value,
+        total: 0,
+        tvaAmount: 0,
+        marginPercent: 0
+      };
+    }
+
+    // Calculer le prix TTC nécessaire pour obtenir cette marge TTC
+    const calculatedPriceTTC = value + costTTC;
+    
+    // Calculer le prix HT correspondant
+    let priceHT: number;
+    if (tvaOption.isMarginBased) {
+      // Pour TVA sur marge, on doit résoudre différemment
+      const tvaRate = tvaOption.rate / 100;
+      // Prix HT = coût HT + marge HT
+      // Marge TTC = marge HT + TVA sur marge = marge HT * (1 + tvaRate)
+      // Donc marge HT = marge TTC / (1 + tvaRate)
+      const marginHT = round(value / (1 + tvaRate));
+      priceHT = round(costHT + marginHT);
+    } else {
+      // Pour TVA classique, on peut simplement diviser par (1 + taux TVA)
+      priceHT = round(calculatedPriceTTC / (1 + tvaOption.rate / 100));
+    }
+    
+    // Calculer la marge HT
+    const marginHT = round(priceHT - costHT);
+    
+    // Calculer le pourcentage de marge
+    const newMarginPercent = round((marginHT / costHT) * 100);
+    
+    // Calculer la TVA
+    let calculatedTVA: number;
+    if (tvaOption.isMarginBased) {
+      calculatedTVA = round(marginHT * (tvaOption.rate / 100));
+    } else {
+      calculatedTVA = round(priceHT * (tvaOption.rate / 100));
+    }
+    
+    const total = round(calculatedPriceTTC + shippingCost);
+    
+    return {
+      priceHT,
+      priceTTC: calculatedPriceTTC,
+      marginHT,
+      marginTTC: value,
+      total,
+      tvaAmount: calculatedTVA,
+      marginPercent: newMarginPercent
+    };
+  };
+
   useEffect(() => {
     if (activeField !== 'costHT' && costHT > 0) {
       const result = calculateFromCostHT(costHT);
@@ -253,7 +360,8 @@ export const PriceCalculator: React.FC<PriceCalculatorProps> = ({
   }, [costHT, costTTC, priceHT, priceTTC, marginPercent, marginHT, marginTTC, shippingCost, totalAmount, tvaAmount]);
 
   const handleInputChange = (field: string, value: string) => {
-    const numValue = parseFloat(value) || 0;
+    // Permettre la saisie de valeurs vides ou partielles (comme "0." ou ".")
+    const numValue = value === '' || value === '.' || value === '0.' ? 0 : parseFloat(value) || 0;
     setActiveField(field);
 
     switch (field) {
@@ -330,6 +438,32 @@ export const PriceCalculator: React.FC<PriceCalculatorProps> = ({
         setShippingCost(numValue);
         setTotalAmount(round(priceTTC + numValue));
         break;
+        
+      case 'marginHT':
+        setMarginHT(numValue);
+        if (costHT > 0) {
+          const result = calculateFromMarginHT(numValue);
+          setMarginPercent(result.marginPercent);
+          setPriceHT(result.priceHT);
+          setPriceTTC(result.priceTTC);
+          setMarginTTC(result.marginTTC);
+          setTotalAmount(result.total);
+          setTvaAmount(result.tvaAmount);
+        }
+        break;
+        
+      case 'marginTTC':
+        setMarginTTC(numValue);
+        if (costHT > 0) {
+          const result = calculateFromMarginTTC(numValue);
+          setMarginPercent(result.marginPercent);
+          setPriceHT(result.priceHT);
+          setPriceTTC(result.priceTTC);
+          setMarginHT(result.marginHT);
+          setTotalAmount(result.total);
+          setTvaAmount(result.tvaAmount);
+        }
+        break;
     }
   };
 
@@ -394,10 +528,8 @@ export const PriceCalculator: React.FC<PriceCalculatorProps> = ({
               Coût de revient HT
             </label>
             <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={costHT || ''}
+              type="text"
+              value={costHT === 0 ? '' : costHT.toString()}
               onChange={(e) => handleInputChange('costHT', e.target.value)}
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
             />
@@ -408,10 +540,8 @@ export const PriceCalculator: React.FC<PriceCalculatorProps> = ({
               Coût de revient TTC
             </label>
             <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={costTTC || ''}
+              type="text"
+              value={costTTC === 0 ? '' : costTTC.toString()}
               onChange={(e) => handleInputChange('costTTC', e.target.value)}
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
             />
@@ -422,10 +552,8 @@ export const PriceCalculator: React.FC<PriceCalculatorProps> = ({
               Prix de vente HT
             </label>
             <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={priceHT || ''}
+              type="text"
+              value={priceHT === 0 ? '' : priceHT.toString()}
               onChange={(e) => handleInputChange('priceHT', e.target.value)}
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
             />
@@ -438,10 +566,8 @@ export const PriceCalculator: React.FC<PriceCalculatorProps> = ({
               Prix de vente TTC
             </label>
             <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={priceTTC || ''}
+              type="text"
+              value={priceTTC === 0 ? '' : priceTTC.toString()}
               onChange={(e) => handleInputChange('priceTTC', e.target.value)}
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
             />
@@ -452,10 +578,8 @@ export const PriceCalculator: React.FC<PriceCalculatorProps> = ({
               Marge (%)
             </label>
             <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={marginPercent || ''}
+              type="text"
+              value={marginPercent === 0 ? '' : marginPercent.toString()}
               onChange={(e) => handleInputChange('marginPercent', e.target.value)}
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
             />
@@ -466,12 +590,10 @@ export const PriceCalculator: React.FC<PriceCalculatorProps> = ({
               Marge HT
             </label>
             <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={marginHT || ''}
-              readOnly
-              className="w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              type="text"
+              value={marginHT === 0 ? '' : marginHT.toString()}
+              onChange={(e) => handleInputChange('marginHT', e.target.value)}
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
             />
           </div>
 
@@ -480,12 +602,10 @@ export const PriceCalculator: React.FC<PriceCalculatorProps> = ({
               Marge TTC
             </label>
             <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={marginTTC || ''}
-              readOnly
-              className="w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              type="text"
+              value={marginTTC === 0 ? '' : marginTTC.toString()}
+              onChange={(e) => handleInputChange('marginTTC', e.target.value)}
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
             />
           </div>
         </div>
@@ -497,10 +617,8 @@ export const PriceCalculator: React.FC<PriceCalculatorProps> = ({
             Frais de port
           </label>
           <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={shippingCost || ''}
+            type="text"
+            value={shippingCost === 0 ? '' : shippingCost.toString()}
             onChange={(e) => handleInputChange('shippingCost', e.target.value)}
             className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
           />
